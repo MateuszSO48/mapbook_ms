@@ -1,7 +1,10 @@
+import requests
+from bs4 import BeautifulSoup
+
 users:list=[
-    {"name":"Kasia", "location":"Warszawa", "posts":3},
-    {"name":"Asia", "location":"Krakow", "posts":5},
-    {"name":"Basia", "location":"Wroclaw", "posts":7},
+    {"name":"Kasia", "location":"Warszawa", "posts":3, "img_url":""},
+    {"name":"Asia", "location":"Kraków", "posts":5, "img_url":""},
+    {"name":"Basia", "location":"Wrocław", "posts":7, "img_url":""},
 ]
 
 def user_info(users_data:list)->None:
@@ -9,11 +12,12 @@ def user_info(users_data:list)->None:
         print(f"Twoj znajomy {user["name"]} z miejscowosci {user["location"]} opublikowal {user["posts"]} posty")
 
 
-def add_user(users_data)->None:
+def add_user(users_data:list)->None:
     name:str=input("Podaj imie nowego znajomego: ")
     location:str=input("Podaj nazwe miejscowosci: ")
     posts:int=int(input("Podaj liczbe postow: "))
-    users_data.append({"name":name, "location":location, "posts":posts})
+    img_url:str=input("Wprowadź adres URL zdjęcia: ")
+    users_data.append({"name":name, "location":location, "posts":posts, "img_url":img_url})
 
 
 def remove_user(users_data:list)->None:
@@ -31,7 +35,50 @@ def update_user(users_data:list)->None:
             user["posts"]=input("Podaj nową liczbe postów: ")
 
 
+def get_coordinates(city_name:str)->list:
+
+    url:str=f'https://pl.wikipedia.org/wiki/{city_name}'
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+                      'AppleWebKit/537.36 (KHTML, like Gecko) '
+                      'Chrome/120.0.0.0 Safari/537.36'
+    }
+    response=requests.get(url,headers=headers)
+    #print(response.text)
+    response_html=BeautifulSoup(response.text,'html.parser')
+    #print(response_html.prettify())
+    latitude=float(response_html.select('.latitude')[1].text.replace(',','.'))
+    #print(latitude)
+    longitude=float(response_html.select('.longitude')[1].text.replace(',','.'))
+    #print(longitude)
+    return [latitude,longitude]
+
+def get_map(users_data:list)->None:
+
+    import folium
+    m = folium.Map(location=[52.23, 21.0], zoom_start=6)
+
+    for user in users_data:
+
+        folium.Marker(
+            location=get_coordinates(user["location"]),
+            tooltip="Click me!",
+            popup=f"<h4>user: {user["name"]}</h4> {user['location']}, {user['posts']}, <img src={user['img_url']} alt='1'/>",
+            icon=folium.Icon(icon="cloud"),
+        ).add_to(m)
+
+    m.save("notatnik.html")
+
 while True:
+    print("============================MENU====================================")
+    print("0. Wyjście z programu")
+    print("1. Wyświetlanie znajomego")
+    print("2. Dodaj znajomego")
+    print("3. Usuń znajomego")
+    print("4. Aktualizuj znajomego")
+    print("5. Generuj mapę")
+    print("====================================================================")
+
     tmp_choice:int=int(input("wybierz opcje menu:"))
     if tmp_choice==0:
         break
@@ -47,3 +94,6 @@ while True:
     if tmp_choice==4:
         print("wybrano funkcje aktualizowania znajomych")
         update_user(users)
+    if tmp_choice==5:
+        print("wybrano funkcje wyświetlania mapy")
+        get_map(users)
