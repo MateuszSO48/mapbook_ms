@@ -1,9 +1,38 @@
 import requests
 from bs4 import BeautifulSoup
 
+class User:
+    def __init__(self, name:str, location:str, posts:int, img_url:str):
+        self.name = name
+        self.location = location
+        self.posts = posts
+        self.img_url = img_url
+        self.coords = self.get_coordinates()
+
+    def get_coordinates(self):
+        import requests
+        from bs4 import BeautifulSoup
+        url: str = f'https://pl.wikipedia.org/wiki/{self.location}'
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+                          'AppleWebKit/537.36 (KHTML, like Gecko) '
+                          'Chrome/120.0.0.0 Safari/537.36'
+        }
+        response = requests.get(url, headers=headers)
+        # print(response.text)
+        response_html = BeautifulSoup(response.text, 'html.parser')
+        # print(response_html.prettify())
+        latitude = float(response_html.select('.latitude')[1].text.replace(',', '.'))
+        # print(latitude)
+        longitude = float(response_html.select('.longitude')[1].text.replace(',', '.'))
+        # print(longitude)
+        return [latitude, longitude]
+
+
+
 def user_info(users_data:list)->None:
     for user in users_data:
-        print(f"Twoj znajomy {user["name"]} z miejscowosci {user["location"]} opublikowal {user["posts"]} posty")
+        print(f"Twoj znajomy {user.name} z miejscowosci {user.location} opublikowal {user.posts} posty")
 
 
 def add_user(users_data:list)->None:
@@ -11,41 +40,24 @@ def add_user(users_data:list)->None:
     location:str=input("Podaj nazwe miejscowosci: ")
     posts:int=int(input("Podaj liczbe postow: "))
     img_url:str=input("Wprowadź adres URL zdjęcia: ")
-    users_data.append({"name":name, "location":location, "posts":posts, "img_url":img_url})
+    users_data.append(User(name=name, location=location, posts=posts, img_url=img_url))
 
 
 def remove_user(users_data:list)->None:
     tmp_name:str=input("Podaj imie uzytkownika do usuniecia ze znajomych: ")
     for user in users_data:
-        if user["name"]==tmp_name:
+        if user.name==tmp_name:
             users_data.remove(user)
 
 def update_user(users_data:list)->None:
     tmp_name:str=input("Podaj imie uzytkownika do aktualizacji: ")
     for user in users_data:
-        if user["name"]==tmp_name:
-            user["name"]=input("Podaj nowe imie uzytkownika: ")
-            user["location"]=input("Podaj nowa miejscowosc: ")
-            user["posts"]=input("Podaj nową liczbe postów: ")
+        if user.name==tmp_name:
+            user.name=input("Podaj nowe imie uzytkownika: ")
+            user.location=input("Podaj nowa miejscowosc: ")
+            user.posts=input("Podaj nową liczbe postów: ")
+            user.coords=user.get_coordinates()
 
-
-def get_coordinates(city_name:str)->list:
-
-    url:str=f'https://pl.wikipedia.org/wiki/{city_name}'
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
-                      'AppleWebKit/537.36 (KHTML, like Gecko) '
-                      'Chrome/120.0.0.0 Safari/537.36'
-    }
-    response=requests.get(url,headers=headers)
-    #print(response.text)
-    response_html=BeautifulSoup(response.text,'html.parser')
-    #print(response_html.prettify())
-    latitude=float(response_html.select('.latitude')[1].text.replace(',','.'))
-    #print(latitude)
-    longitude=float(response_html.select('.longitude')[1].text.replace(',','.'))
-    #print(longitude)
-    return [latitude,longitude]
 
 def get_map(users_data:list)->None:
 
@@ -55,9 +67,9 @@ def get_map(users_data:list)->None:
     for user in users_data:
 
         folium.Marker(
-            location=get_coordinates(user["location"]),
+            location=user.coords,
             tooltip="Click me!",
-            popup=f"<h4>user: {user["name"]}</h4> {user['location']}, {user['posts']}, <img src={user['img_url']} alt='1'/>",
+            popup=f"<h4>user: {user.name}</h4> {user.location}, {user.posts}, <img src={user.img_url} alt='1'/>",
             icon=folium.Icon(icon="cloud"),
         ).add_to(m)
 
