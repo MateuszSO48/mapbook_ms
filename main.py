@@ -1,7 +1,17 @@
 from tkinter import *
 import tkintermapview
 
+import psycopg2
 from mapbook_lib.controller import update_user
+
+db_engine = psycopg2.connect(
+    user="postgres",
+    database="postgres",
+    password="postgres",
+    port="5432",
+    host="localhost"
+)
+
 
 users: list = []
 
@@ -36,25 +46,39 @@ class User:
         # print(longitude)
         return [latitude, longitude]
 
-def add_user(users_data:list)->None:
+
+def add_user(users_data:list, db_engine=db_engine)->None:
+    cursor = db_engine.cursor()
     name:str=entry_name.get()
     location:str=entry_lokalizacja.get()
     posts:int=int(entry_posty.get())
     img_url:str=entry_img_url.get()
-    users_data.append(User(name=name, location=location, posts=posts, img_url=img_url))
+    user=User(name=name, location=location, posts=posts, img_url=img_url)
+    users_data.append(user)
     print(users_data)
+    SQL = f"INSERT INTO public.users(name, location, posts, img_url, geometry) VALUES ('{name}', '{location}', {posts}, '{img_url}', 'SRID=4326;POINT({user.coords[0]} {user.coords[1]})');"
     user_info(users_data)
     entry_name.delete(0, END)
     entry_lokalizacja.delete(0, END)
     entry_posty.delete(0, END)
     entry_img_url.delete(0, END)
     entry_name.focus()
+    cursor.execute(SQL)
+    db_engine.commit()
 
 
-def user_info(users_data:list):
+def user_info(users_data_list, db_engine=db_engine):
     listbox_lista_obiektow.delete(0, END)
-    for idx,user in enumerate(users_data):
-        listbox_lista_obiektow.insert(idx, f"{user.name} {user.location} {user.posts} posty")
+    SQL = "SELECT *, ST_AsEWKT(geometry) FROM public.users;"
+    cursor = db_engine.cursor()
+    cursor.execute(SQL)
+    users_data = cursor.fetchall()
+    users_data_list=users_data
+    # print(list(map(float, user[-1][16:-1].split())))
+
+
+    for idx,user in enumerate(users_data_list):
+        listbox_lista_obiektow.insert(idx, f"{user[1]} {user[2]} {user[3]}")
 
 
 
@@ -69,10 +93,11 @@ def delete_user(users_data:list):
 
 def user_details(users_data:list):
     i = listbox_lista_obiektow.index(ACTIVE)
-    label_imie_szczegoly_obiektu_wartosc.config(text=users_data[i].name)
-    label_lokalizacja_szczegoly_obiektu.config(text=users_data[i].location)
-    label_posty_szczegoly_obiektu_wartosc.config(text=users_data[i].posts)
-    map_widget.set_position(users_data[i].coords[0], users_data[i].coords[1])
+    label_imie_szczegoly_obiektu_wartosc.config(text=users_data[i][1])
+    label_lokalizacja_szczegoly_obiektu.config(text=users_data[i][2])
+    label_posty_szczegoly_obiektu_wartosc.config(text=users_data[i][3])
+    tmp_coords=list(map(float, users_data[i][-1][16:-1].split()))
+    map_widget.set_position(tmp_coords[0], tmp_coords[1] )
     map_widget.set_zoom(14)
 
 def edit_user(users_data:list):
